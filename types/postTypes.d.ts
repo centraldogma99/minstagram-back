@@ -1,5 +1,7 @@
+import { User } from "./user";
+
 export interface IComment {
-  authorName: string,
+  authorId: string;
   content: string,
   likes: ILike[]
 }

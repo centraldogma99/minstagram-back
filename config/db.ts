@@ -4,11 +4,11 @@ import { User } from "../types/user"
 
 
 const postSchema = new mongoose.Schema<IPost>({
-  _id: Number,
+  authorId: String,
   pictures: [String],
   likes: [{ authorId: String }],
   comments: [{
-    authorName: String,
+    authorId: String,
     content: String,
     likes: [{ authorId: String }]
   }]
@@ -18,6 +18,11 @@ const userSchema = new mongoose.Schema<User>({
   name: String,
   email: String,
   password: String
+})
+
+const imageSchema = new mongoose.Schema({
+  filename: String,
+  accessAddress: String
 })
 
 mongoose.connect("mongodb://localhost:27017/minstagram");
@@ -33,3 +38,4 @@ db.on("disconnected", () => {
 
 export const postModel = mongoose.model("posts", postSchema);
 export const userModel = mongoose.model("users", userSchema);
+export const imageModel = mongoose.model("images", imageSchema);

@@ -13,8 +13,8 @@ router.get('/', (req, res) => {
 router.post('/register', bodyParser.json(), async (req, res) => {
   try {
     console.log(req.body);
-    const { username, email, password } = req.body;
-    if (!username || !email || !password) return res.status(400).send("bad request");
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) return res.status(400).send("bad request");
 
     const oldUser = await userModel.findOne({ email });
     if (oldUser) return res.status(409).send("email already registered");
@@ -22,7 +22,7 @@ router.post('/register', bodyParser.json(), async (req, res) => {
     const encrypted = await bcrypt.hash(password, 10);
 
     const user = await userModel.create({
-      username,
+      name: name,
       email: email.toLowerCase(),
       password: encrypted
     });
@@ -39,7 +39,7 @@ router.post('/login', bodyParser.json(), async (req, res) => {
     if (!email || !password) return res.status(400).send("bad request")
 
     const user = await userModel.findOne({ email });
-    console.log(user);
+    console.log("user: " + user);
     if (!user) return res.status(404).send("no such user, you should register");
 
     if (!await bcrypt.compare(password, user.password))
@@ -59,7 +59,6 @@ router.post('/login', bodyParser.json(), async (req, res) => {
   }
 
   router.get('/logout', (req, res) => {
-    console.log("logout")
     return res.status(200).clearCookie("credential", { path: '/' }).send("successful");
   })
 })
