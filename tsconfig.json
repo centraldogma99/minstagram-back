@@ -3,7 +3,7 @@
     "files": true
   },
   "files": [
-    "./types/express.d.ts"
+    "./@types/express/index.d.ts"
   ],
   "compilerOptions": {
     "outDir": "./build",
@@ -15,8 +15,13 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "typeRoots": [
-      "./node_modules/@types",
-      "./types"
+      "./@types",
+      "./node_modules/@types"
     ],
+    // "paths": {
+    //   "*": [
+    //     "./@types/*"
+    //   ]
+    // }
   }
 }

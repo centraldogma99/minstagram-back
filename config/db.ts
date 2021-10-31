@@ -15,6 +15,7 @@ const postSchema = new mongoose.Schema<IPost>({
 })
 
 const userSchema = new mongoose.Schema<User>({
+  avatar: String,
   name: String,
   email: String,
   password: String

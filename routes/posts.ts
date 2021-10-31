@@ -1,12 +1,13 @@
-import express from "express";
-import { postModel, userModel, imageModel } from "../config/db";
+import express, { Request, Response } from "express";
+import { postModel, userModel } from "../config/db";
 import auth from "../middlewares/auth";
 import bodyParser from "body-parser";
 import { IComment, IPost } from "../types/postTypes";
 import multer from "multer";
-import randomString from "../modules/randomString";
-import { uploadImage } from "../modules/handleImage";
+import { uploadImages } from "../modules/handleImage";
 import mongoose from "mongoose"
+import { User } from "../types/user";
+
 
 const ObjectId = mongoose.Types.ObjectId;
 
@@ -28,8 +29,7 @@ const pageSize = 10;
 router.use(bodyParser.json());
 
 const validatePostId = (id: any) => {
-  if (isNaN(id)) return false;
-  else return true;
+  return true;
 }
 
 const validatePost = (post: IPost) => {
@@ -62,8 +62,15 @@ const chunkArray = <T>(myArray: T[], chunk_size: number): T[][] => {
   return tempArray;
 }
 
+const getUserInfo = async (id: string) => {
+  if (!id) return "none";
+  const user = await userModel.findOne({ _id: new ObjectId(id) });
+  if (!user) return "undefined"
+  return user;
+}
+
 // convert user id to user name
-const getUserName = async (id?: string) => {
+const getUserName = async (id: string) => {
   if (!id) return "none";
   const user = await userModel.findOne({ _id: new ObjectId(id) });
   if (!user) return "undefined"
@@ -73,41 +80,61 @@ const getUserName = async (id?: string) => {
 const removeUserIdFromComment = async (comment: IComment) => {
   if (!comment) return;
   const { authorId, content, likes } = comment;
-  const authorName = await getUserName(authorId)
-  if (!authorName) return undefined;
+  const author = await getUserInfo(authorId) as User;
   return {
-    authorName: authorName,
+    author: {
+      id: authorId,
+      name: author.name,
+      avatar: author.avatar
+    },
     content: content,
     likes: likes
   };
 }
 
-// convert all user IDs to user names
-const removeUserIdFromPost = async (post: IPost) => {
+// 유저 아이디들을 유저 정보로 바꿔준다(이름, 아바타, id)
+// 
+// FIXME : name is ambiguous
+const preProcessIdFromPost = async (post: IPost) => {
   if (!post) return;
   const { _id, authorId, comments, likes, pictures } = post;
-  const authorName = await getUserName(authorId);
-  const commentsName = await Promise.all(comments.map(async (comment) => {
+  const author: User = await getUserInfo(authorId) as User;
+  if (!author) return;
+  const comments_ = await Promise.all(comments.map(async (comment) => {
     const { authorId, content, likes } = comment;
-    console.log("authorId:" + authorId)
+    const author = await getUserInfo(authorId) as User;
     return {
-      authorName: await getUserName(authorId),
+      author: {
+        id: authorId,
+        name: author.name,
+        avatar: author.avatar
+      },
       content: content,
+      // FIXME: likes 안의 id는 아직 처리 안함
       likes: likes
     }
   }));
-  const likesName = await Promise.all(likes.map(async like => {
+  const likes_ = await Promise.all(likes.map(async like => {
     const { authorId } = like;
-    return { authorName: await getUserName(authorId) }
+    const author = await getUserInfo(authorId) as User;
+    return {
+      author: {
+        id: authorId,
+        name: author.name,
+        avatar: author.avatar
+      }
+    }
   }));
-
-  console.log("commentsName: " + commentsName)
 
   return {
     _id: _id,
-    authorName: authorName,
-    comments: commentsName,
-    likes: likesName,
+    author: {
+      id: authorId,
+      name: author.name,
+      avatar: author.avatar
+    },
+    comments: comments_,
+    likes: likes_,
     pictures: pictures
   };
 }
@@ -121,7 +148,7 @@ router.get('/:id', async (req, res) => {
 
   if (!post) return res.status(404).send("id not exist");
 
-  const postWithUserName = await removeUserIdFromPost(post);
+  const postWithUserName = await preProcessIdFromPost(post);
 
   return res.json(postWithUserName);
 });
@@ -145,13 +172,14 @@ router.delete('/:id', auth, async (req, res) => {
 // 새로운 post 만들기
 // Request Body: { pictures: string[] }
 // author는 id형태로 반환된다.
-router.post('/new', [auth, upload.array('pictures', 10)], async (req: express.Request, res) => {
-  if (!(req as any).files) {
+// FIXME: req any
+router.post('/new', [auth, upload.array('pictures', pageSize)], async (req: any, res: Response) => {
+  if (!req.files) {
     return res.status(400).send("bad post: no images");
   }
   const pictures: Express.Multer.File[] = req.files as Express.Multer.File[];
   // 이미지를 문자열 주소의 형태로 변환 후 데이터베이스에 등록
-  const pictureAddrPromises = uploadImage(pictures.map(picture => picture.filename))
+  const pictureAddrPromises = uploadImages(pictures.map(picture => picture.filename))
   const pictureAddrs = await Promise.all(pictureAddrPromises);
 
   const post = new postModel({
@@ -161,7 +189,7 @@ router.post('/new', [auth, upload.array('pictures', 10)], async (req: express.Re
     comments: []
   });
   await post.save();
-  const postWithUserName = await removeUserIdFromPost(post);
+  const postWithUserName = await preProcessIdFromPost(post);
   return res.json(postWithUserName);
 })
 
@@ -177,7 +205,7 @@ router.get('/', async (req, res) => {
   const postsChunk = chunkArray<IPost>(posts, pageSizeNum);
 
   const data = await Promise.all(postsChunk[pageNum - 1].map(
-    async (post: IPost) => await removeUserIdFromPost(post)
+    async (post: IPost) => await preProcessIdFromPost(post)
   ))
   return res.json(data)
 })
@@ -186,7 +214,8 @@ router.get('/', async (req, res) => {
 // req.param으로 postId 받아서 저장
 // 변경된 post를 반환
 // Request body: { content: string }
-router.post('/:id/comment', auth, async (req: express.Request, res) => {
+// FIXME: req any
+router.post('/:id/comment', auth, async (req: any, res) => {
   const id = req.params.id;
   if (!validatePostId(id)) {
     return res.status(400).send("bad id");

@@ -2,7 +2,7 @@ import { imageModel } from "../config/db";
 import randomString from "./randomString";
 
 // only internal use
-export const uploadImage = (pictureNames: string[]) => {
+export const uploadImages = (pictureNames: string[]) => {
   return pictureNames.map(async pictureName => {
     let isOccupied = true;
     let randomStr = ""
