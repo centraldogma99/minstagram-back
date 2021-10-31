@@ -32,6 +32,7 @@ router.post('/register', bodyParser.json(), async (req, res) => {
   }
 });
 
+// 토큰 형식 : _id: objectID(string), email, name
 router.post('/login', bodyParser.json(), async (req, res) => {
   try {
     console.log(req.body);
@@ -39,14 +40,12 @@ router.post('/login', bodyParser.json(), async (req, res) => {
     if (!email || !password) return res.status(400).send("bad request")
 
     const user = await userModel.findOne({ email });
-    console.log("user: " + user);
     if (!user) return res.status(404).send("no such user, you should register");
 
     if (!await bcrypt.compare(password, user.password))
       return res.status(401).send("invalid credentials");
-
     const token = jwt.sign(
-      { user_id: user._id, email, name: user.name },
+      { _id: user._id.toString(), email, name: user.name },
       process.env.TOKEN_KEY as jwt.Secret,
       {
         expiresIn: "1h"

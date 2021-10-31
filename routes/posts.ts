@@ -6,6 +6,9 @@ import { IComment, IPost } from "../types/postTypes";
 import multer from "multer";
 import randomString from "../modules/randomString";
 import { uploadImage } from "../modules/handleImage";
+import mongoose from "mongoose"
+
+const ObjectId = mongoose.Types.ObjectId;
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -47,9 +50,9 @@ const validatePost = (post: IPost) => {
 //   return true;
 // }
 
-const chunkArray = (myArray: any[], chunk_size: number) => {
+const chunkArray = <T>(myArray: T[], chunk_size: number): T[][] => {
   const arrayLength = myArray.length;
-  const tempArray = [];
+  const tempArray: T[][] = [];
 
   for (let i = 0; i < arrayLength; i += chunk_size) {
     const myChunk = myArray.slice(i, i + chunk_size);
@@ -60,24 +63,51 @@ const chunkArray = (myArray: any[], chunk_size: number) => {
 }
 
 // convert user id to user name
-const getUserName = async (id: string) => {
-  const user = await userModel.findById(id);
+const getUserName = async (id?: string) => {
+  if (!id) return "none";
+  const user = await userModel.findOne({ _id: new ObjectId(id) });
+  if (!user) return "undefined"
   return user.name;
 };
+
+const removeUserIdFromComment = async (comment: IComment) => {
+  if (!comment) return;
+  const { authorId, content, likes } = comment;
+  const authorName = await getUserName(authorId)
+  if (!authorName) return undefined;
+  return {
+    authorName: authorName,
+    content: content,
+    likes: likes
+  };
+}
 
 // convert all user IDs to user names
 const removeUserIdFromPost = async (post: IPost) => {
   if (!post) return;
-  const { authorId, comments, likes, _id, pictures } = post;
+  const { _id, authorId, comments, likes, pictures } = post;
   const authorName = await getUserName(authorId);
-  const commentsName = comments.map(async comment => { await getUserName(comment.authorId) });
-  const likesName = likes.map(async like => { await getUserName(like.authorId) });
+  const commentsName = await Promise.all(comments.map(async (comment) => {
+    const { authorId, content, likes } = comment;
+    console.log("authorId:" + authorId)
+    return {
+      authorName: await getUserName(authorId),
+      content: content,
+      likes: likes
+    }
+  }));
+  const likesName = await Promise.all(likes.map(async like => {
+    const { authorId } = like;
+    return { authorName: await getUserName(authorId) }
+  }));
+
+  console.log("commentsName: " + commentsName)
 
   return {
+    _id: _id,
     authorName: authorName,
     comments: commentsName,
     likes: likesName,
-    _id: _id,
     pictures: pictures
   };
 }
@@ -87,7 +117,8 @@ router.get('/:id', async (req, res) => {
   if (!validatePostId(id)) {
     return res.status(400).send("bad id")
   }
-  const post = await postModel.findOne({ _id: Number(id) });
+  const post = await postModel.findById(id)
+
   if (!post) return res.status(404).send("id not exist");
 
   const postWithUserName = await removeUserIdFromPost(post);
@@ -102,10 +133,10 @@ router.delete('/:id', auth, async (req, res) => {
   if (!validatePostId(id)) {
     return res.status(400).send("bad id");
   }
-  const post = await postModel.findOne({ _id: Number(id) });
+  const post = await postModel.findOne({ _id: id });
   if (!post) return res.status(404).send("id not exist");
 
-  await postModel.deleteOne({ _id: Number(id) });
+  await postModel.deleteOne({ _id: id });
 
   // 삭제 잘 되었는지 따로 검증 x
   return res.send("delete successful");
@@ -119,15 +150,13 @@ router.post('/new', [auth, upload.array('pictures', 10)], async (req: express.Re
     return res.status(400).send("bad post: no images");
   }
   const pictures: Express.Multer.File[] = req.files as Express.Multer.File[];
-  console.log(pictures);
   // 이미지를 문자열 주소의 형태로 변환 후 데이터베이스에 등록
   const pictureAddrPromises = uploadImage(pictures.map(picture => picture.filename))
   const pictureAddrs = await Promise.all(pictureAddrPromises);
-  console.log(pictureAddrs)
 
   const post = new postModel({
     pictures: pictureAddrs,
-    authorId: (req as any).user.user_id,
+    authorId: req.user._id,
     likes: [],
     comments: []
   });
@@ -144,9 +173,9 @@ router.get('/', async (req, res) => {
   const pageNum = page ? Number(page) : 1;
   const pageSizeNum = pageSize ? Number(pageSize) : 10;
 
-  const posts = await postModel.find();
-  const postsChunk = chunkArray(posts, pageSizeNum);
-  console.log(postsChunk[pageNum - 1]);
+  const posts: IPost[] = await postModel.find();
+  const postsChunk = chunkArray<IPost>(posts, pageSizeNum);
+
   const data = await Promise.all(postsChunk[pageNum - 1].map(
     async (post: IPost) => await removeUserIdFromPost(post)
   ))
@@ -157,29 +186,30 @@ router.get('/', async (req, res) => {
 // req.param으로 postId 받아서 저장
 // 변경된 post를 반환
 // Request body: { content: string }
-router.post('/:id/comment', auth, async (req, res) => {
+router.post('/:id/comment', auth, async (req: express.Request, res) => {
   const id = req.params.id;
   if (!validatePostId(id)) {
     return res.status(400).send("bad id");
   }
-  const post = await postModel.findOne({ _id: Number(id) });
+  const post = await postModel.findOne({ _id: id });
+  console.log("post: " + post)
   if (!post) return res.status(404).send("id not exist");
 
+  // FIXME: content type이 any임
   const { content } = req.body;
   if (content.length <= 0) {
     return res.status(400).send("bad comment");
   }
 
   const comment: IComment = {
-    content,
+    content: content,
     likes: [],
-    authorId: (req as any).user.id
+    authorId: req.user._id
   };
-
   post.comments.push(comment);
-  await post.save();
+  post.save();
 
-  return res.json(await removeUserIdFromPost(post));
+  return res.json(await removeUserIdFromComment(comment));
 });
 
 export default router;

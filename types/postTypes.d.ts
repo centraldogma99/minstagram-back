@@ -1,7 +1,8 @@
+import mongoose from "mongoose";
 import { User } from "./user";
 
 export interface IComment {
-  authorId: string;
+  authorId: string,
   content: string,
   likes: ILike[]
 }
@@ -11,8 +12,8 @@ export interface ILike {
 }
 
 export interface IPost {
-  // author은 토큰 또는 objectID와 같은 일련번호.
-  _id: number,
+  _id: mongoose.Types.ObjectId,
+  // author objectID와 같은 일련번호.
   authorId: string,
   pictures: string[],
   likes: ILike[],

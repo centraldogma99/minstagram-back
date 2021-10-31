@@ -1,4 +1,10 @@
 {
+  "ts-node": {
+    "files": true
+  },
+  "files": [
+    "./types/express.d.ts"
+  ],
   "compilerOptions": {
     "outDir": "./build",
     "allowJs": true,
@@ -7,6 +13,10 @@
     "inlineSourceMap": true,
     "moduleResolution": "node",
     "esModuleInterop": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "typeRoots": [
+      "./node_modules/@types",
+      "./types"
+    ],
   }
 }
