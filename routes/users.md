@@ -92,3 +92,14 @@
 }
 ```
 with **Cookie** containing JWT token
+
+
+## /:id/posts (GET)
+Return posts written by users matching :id
+### Parameters
+- **Params** id: objectID of an user
+
+## /name/:name (GET)
+Return user info with matching name
+###Parameters
+- **Params** name: name of an user

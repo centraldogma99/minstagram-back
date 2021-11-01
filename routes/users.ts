@@ -1,5 +1,5 @@
 import express from "express";
-import { userModel } from "../config/db";
+import { postModel, userModel } from "../config/db";
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 import bodyParser from "body-parser";
@@ -38,7 +38,6 @@ router.get('/', (req, res) => {
 // 내 정보 반환
 // FIXME: req any
 router.get('/me', auth, async (req: Express.Request, res) => {
-  console.log("me");
   const user = await userModel.findOne({ _id: req.user?._id });
   if (!user) return res.status(404).send("User not found");
   const { _id, name, email, avatar } = user;
@@ -68,12 +67,9 @@ router.post('/changeProfile', [auth, upload.single('profile-picture')],
 // 현재는 인증 구현 안하고 누구나 접근 가능
 // id를 받아 해당하는 유저의 정보 반환
 router.get('/:id', async (req, res) => {
-  console.log(":id")
   try {
     const id = req.params?.id;
     if (!id) return res.status(400).send("bad request: no id");
-    console.log(id);
-    console.log('why')
     const user = await userModel.findOne({ _id: id });
     if (!user) return res.status(404).send("no such user");
     const { _id, name, email, avatar } = user;
@@ -81,6 +77,26 @@ router.get('/:id', async (req, res) => {
   } catch (e) {
     console.error(e);
   }
+})
+
+router.get('/:id/posts', async (req, res) => {
+  const id = req.params?.id;
+  if (!id) return res.status(400).send("bad request: no id");
+  const user = await userModel.findOne({ _id: id });
+  if (!user) return res.status(404).send("no such user");
+
+  const posts = await postModel.find({ authorId: user._id });
+  if (!posts) return res.status(404).send("no posts");
+  res.json(posts);
+})
+
+router.get('/name/:name', async (req, res) => {
+  const nameParam = req.params?.name;
+  if (!nameParam) return res.status(400).send("bad request: no name");
+  const user = await userModel.findOne({ name: nameParam });
+  if (!user) return res.status(404).send("no such user");
+  const { _id, name, email, avatar } = user;
+  res.json({ _id, name, email, avatar });
 })
 
 router.post('/register', bodyParser.json(), async (req, res) => {
