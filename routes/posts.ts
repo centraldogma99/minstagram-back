@@ -2,11 +2,12 @@ import express, { Request, Response } from "express";
 import { postModel, userModel } from "../config/db";
 import auth from "../middlewares/auth";
 import bodyParser from "body-parser";
-import { IComment, IPost } from "../types/postTypes";
+import { IComment, IPost, ILike } from "../types/postTypes";
 import multer from "multer";
 import { uploadImages } from "../modules/handleImage";
 import mongoose from "mongoose"
 import { User } from "../types/user";
+import chunkArray from "../modules/chunkArray";
 
 
 const ObjectId = mongoose.Types.ObjectId;
@@ -29,6 +30,7 @@ const pageSize = 10;
 router.use(bodyParser.json());
 
 const validatePostId = (id: any) => {
+  if (!id) return false;
   return true;
 }
 
@@ -50,29 +52,19 @@ const validatePost = (post: IPost) => {
 //   return true;
 // }
 
-const chunkArray = <T>(myArray: T[], chunk_size: number): T[][] => {
-  const arrayLength = myArray.length;
-  const tempArray: T[][] = [];
 
-  for (let i = 0; i < arrayLength; i += chunk_size) {
-    const myChunk = myArray.slice(i, i + chunk_size);
-    tempArray.push(myChunk);
-  }
-
-  return tempArray;
-}
 
 const getUserInfo = async (id: string) => {
-  if (!id) return "none";
-  const user = await userModel.findOne({ _id: new ObjectId(id) });
-  if (!user) return "undefined"
+  if (!id) return;
+  const user = await userModel.findOne({ _id: id });
+  if (!user) return;
   return user;
 }
 
 // convert user id to user name
 const getUserName = async (id: string) => {
   if (!id) return "none";
-  const user = await userModel.findOne({ _id: new ObjectId(id) });
+  const user = await userModel.findOne({ _id: id });
   if (!user) return "undefined"
   return user.name;
 };
@@ -92,39 +84,36 @@ const removeUserIdFromComment = async (comment: IComment) => {
   };
 }
 
+const removeUserIdFromLike = async (like: ILike) => {
+  if (!like) return;
+  const { authorId } = like;
+  const author = await getUserInfo(authorId) as User;
+  if (!author) return;
+  return {
+    author: {
+      id: authorId,
+      name: author.name,
+      avatar: author.avatar
+    }
+  }
+}
+
 // 유저 아이디들을 유저 정보로 바꿔준다(이름, 아바타, id)
-// 
-// FIXME : name is ambiguous
 const preProcessIdFromPost = async (post: IPost) => {
   if (!post) return;
   const { _id, authorId, comments, likes, pictures } = post;
-  const author: User = await getUserInfo(authorId) as User;
+  const author = await getUserInfo(authorId) as User;
   if (!author) return;
-  const comments_ = await Promise.all(comments.map(async (comment) => {
-    const { authorId, content, likes } = comment;
-    const author = await getUserInfo(authorId) as User;
-    return {
-      author: {
-        id: authorId,
-        name: author.name,
-        avatar: author.avatar
-      },
-      content: content,
-      // FIXME: likes 안의 id는 아직 처리 안함
-      likes: likes
-    }
-  }));
-  const likes_ = await Promise.all(likes.map(async like => {
-    const { authorId } = like;
-    const author = await getUserInfo(authorId) as User;
-    return {
-      author: {
-        id: authorId,
-        name: author.name,
-        avatar: author.avatar
-      }
-    }
-  }));
+  const comments_ = await Promise.all(
+    comments.map((comment) => {
+      return removeUserIdFromComment(comment);
+    })
+  );
+  const likes_ = await Promise.all(
+    likes.map(like => {
+      return removeUserIdFromLike(like)
+    })
+  );
 
   return {
     _id: _id,
@@ -140,7 +129,7 @@ const preProcessIdFromPost = async (post: IPost) => {
 }
 
 router.get('/:id', async (req, res) => {
-  const id = req.params.id;
+  const id = req.params?.id;
   if (!validatePostId(id)) {
     return res.status(400).send("bad id")
   }
@@ -156,7 +145,7 @@ router.get('/:id', async (req, res) => {
 // 로그인만 되어있다면 삭제 가능하도록 되어있음(auth 미들웨어) TODO: 삭제 권한 관리
 router.delete('/:id', auth, async (req, res) => {
   // 아래 5라인 중복됨
-  const id = req.params.id;
+  const id = req.params?.id;
   if (!validatePostId(id)) {
     return res.status(400).send("bad id");
   }
@@ -173,7 +162,7 @@ router.delete('/:id', auth, async (req, res) => {
 // Request Body: { pictures: string[] }
 // author는 id형태로 반환된다.
 // FIXME: req any
-router.post('/new', [auth, upload.array('pictures', pageSize)], async (req: any, res: Response) => {
+router.post('/new', [auth, upload.array('pictures', pageSize)], async (req: Express.Request, res: Response) => {
   if (!req.files) {
     return res.status(400).send("bad post: no images");
   }
@@ -202,6 +191,8 @@ router.get('/', async (req, res) => {
   const pageSizeNum = pageSize ? Number(pageSize) : 10;
 
   const posts: IPost[] = await postModel.find();
+  if (!posts || posts.length === 0) return res.status(404).send("no posts");
+
   const postsChunk = chunkArray<IPost>(posts, pageSizeNum);
 
   const data = await Promise.all(postsChunk[pageNum - 1].map(
@@ -216,12 +207,11 @@ router.get('/', async (req, res) => {
 // Request body: { content: string }
 // FIXME: req any
 router.post('/:id/comment', auth, async (req: any, res) => {
-  const id = req.params.id;
+  const id = req.params?.id;
   if (!validatePostId(id)) {
     return res.status(400).send("bad id");
   }
   const post = await postModel.findOne({ _id: id });
-  console.log("post: " + post)
   if (!post) return res.status(404).send("id not exist");
 
   // FIXME: content type이 any임

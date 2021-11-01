@@ -7,6 +7,17 @@ import auth from "../middlewares/auth";
 import multer from "multer";
 import { uploadImages } from "../modules/handleImage";
 
+import reqUser from "../types/reqUser"
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: reqUser,
+      cookies?: any
+    }
+  }
+}
+
 const router = express.Router();
 
 const upload = multer({
@@ -26,16 +37,20 @@ router.get('/', (req, res) => {
 
 // 내 정보 반환
 // FIXME: req any
-router.get('/me', auth, (req: any, res) => {
-  res.json(req.user);
+router.get('/me', auth, async (req: Express.Request, res) => {
+  console.log("me");
+  const user = await userModel.findOne({ _id: req.user?._id });
+  if (!user) return res.status(404).send("User not found");
+  const { _id, name, email, avatar } = user;
+  res.json({ _id, name, email, avatar });
 })
 
 // FIXME: req any
 // 내 프로필 사진을 변경
 router.post('/changeProfile', [auth, upload.single('profile-picture')],
-  async (req: any, res) => {
-    const picture = req.file;
+  async (req: Express.Request, res) => {
     if (!req.file) return res.status(400).send("no file");
+    const picture = req.file;
 
     const pictureAddrPromises = uploadImages([picture.filename]);
     const pictureAddr = (await Promise.all(pictureAddrPromises))[0];
@@ -46,20 +61,23 @@ router.post('/changeProfile', [auth, upload.single('profile-picture')],
     }
     user.avatar = pictureAddr;
     await user.save();
-
-    return res.send(user);
+    const { _id, name, email, avatar } = user;
+    res.json({ _id, name, email, avatar });
   })
 
 // 현재는 인증 구현 안하고 누구나 접근 가능
 // id를 받아 해당하는 유저의 정보 반환
-// FIXME: 패스워드까지 뱉고 있다.
 router.get('/:id', async (req, res) => {
+  console.log(":id")
   try {
-    const id = req.params.id;
+    const id = req.params?.id;
+    if (!id) return res.status(400).send("bad request: no id");
     console.log(id);
+    console.log('why')
     const user = await userModel.findOne({ _id: id });
     if (!user) return res.status(404).send("no such user");
-    res.send(user);
+    const { _id, name, email, avatar } = user;
+    res.json({ _id, name, email, avatar });
   } catch (e) {
     console.error(e);
   }
@@ -67,7 +85,6 @@ router.get('/:id', async (req, res) => {
 
 router.post('/register', bodyParser.json(), async (req, res) => {
   try {
-    console.log(req.body);
     const { name, email, password } = req.body;
     if (!name || !email || !password) return res.status(400).send("bad request");
 
@@ -79,8 +96,10 @@ router.post('/register', bodyParser.json(), async (req, res) => {
     const user = await userModel.create({
       name: name,
       email: email.toLowerCase(),
-      password: encrypted
+      password: encrypted,
+      avatar: ""
     });
+    delete user.password
     res.json(user);
   } catch (e) {
     console.error(e);
@@ -89,6 +108,7 @@ router.post('/register', bodyParser.json(), async (req, res) => {
 
 // 토큰 형식 : _id: objectID(string), email, name
 router.post('/login', bodyParser.json(), async (req, res) => {
+  console.log('login')
   try {
     console.log(req.body);
     const { email, password } = req.body;

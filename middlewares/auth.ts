@@ -8,7 +8,6 @@ const auth = (req: any, res, next) => {
   if (!token) return res.status(403).send("token required");
 
   try {
-    console.log(token);
     const decoded: any = jwt.verify(token, process.env.TOKEN_KEY);
     req.user = {
       _id: decoded._id,
@@ -16,7 +15,6 @@ const auth = (req: any, res, next) => {
       name: decoded.name
     }
   } catch (e) {
-    console.log("token verification error: " + e);
     return res.status(401).send('bad token');
   }
   return next();
