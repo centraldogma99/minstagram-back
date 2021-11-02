@@ -18,4 +18,5 @@ export interface IPost {
   pictures: string[],
   likes: ILike[],
   comments: IComment[],
+  text: string
 }

@@ -143,7 +143,12 @@ router.post('/login', bodyParser.json(), async (req, res) => {
       }
     )
 
-    res.status(200).cookie('credential', token, { maxAge: 3600000 }).json(user);
+    res.status(200).cookie('credential', token, { maxAge: 3600000 }).json({
+      _id: user._id,
+      name: user.name,
+      avatar: user.avatar,
+      email: user.email
+    });
   } catch (e) {
     console.error(e);
   }

@@ -7,6 +7,7 @@ const postSchema = new mongoose.Schema<IPost>({
   authorId: String,
   pictures: [String],
   likes: [{ authorId: String }],
+  text: String,
   comments: [{
     authorId: String,
     content: String,

@@ -5,12 +5,19 @@ import bodyParser from "body-parser";
 import { IComment, IPost, ILike } from "../types/postTypes";
 import multer from "multer";
 import { uploadImages } from "../modules/handleImage";
-import mongoose from "mongoose"
 import { User } from "../types/user";
 import chunkArray from "../modules/chunkArray";
+import reqUser from "../types/reqUser"
 
-
-const ObjectId = mongoose.Types.ObjectId;
+declare global {
+  namespace Express {
+    interface Request {
+      user?: reqUser,
+      cookies?: any,
+      body?: any
+    }
+  }
+}
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -101,7 +108,7 @@ const removeUserIdFromLike = async (like: ILike) => {
 // 유저 아이디들을 유저 정보로 바꿔준다(이름, 아바타, id)
 const preProcessIdFromPost = async (post: IPost) => {
   if (!post) return;
-  const { _id, authorId, comments, likes, pictures } = post;
+  const { _id, authorId, comments, likes, pictures, text } = post;
   const author = await getUserInfo(authorId) as User;
   if (!author) return;
   const comments_ = await Promise.all(
@@ -120,9 +127,11 @@ const preProcessIdFromPost = async (post: IPost) => {
     author: {
       id: authorId,
       name: author.name,
-      avatar: author.avatar
+      avatar: author.avatar,
+      email: author.email
     },
     comments: comments_,
+    text: text,
     likes: likes_,
     pictures: pictures
   };
@@ -171,9 +180,12 @@ router.post('/new', [auth, upload.array('pictures', pageSize)], async (req: Expr
   const pictureAddrPromises = uploadImages(pictures.map(picture => picture.filename))
   const pictureAddrs = await Promise.all(pictureAddrPromises);
 
+  const text = req.body?.text;
+
   const post = new postModel({
     pictures: pictureAddrs,
     authorId: req.user._id,
+    text: text,
     likes: [],
     comments: []
   });
