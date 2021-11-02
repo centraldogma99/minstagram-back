@@ -161,10 +161,15 @@ router.delete('/:id', auth, async (req, res) => {
   const post = await postModel.findOne({ _id: id });
   if (!post) return res.status(404).send("id not exist");
 
-  await postModel.deleteOne({ _id: id });
-
-  // 삭제 잘 되었는지 따로 검증 x
-  return res.send("delete successful");
+  if (post.authorId !== req.user?._id) {
+    return res.status(403).send("you are not author");
+  }
+  try {
+    await postModel.deleteOne({ _id: id });
+    return res.send("delete successful");
+  } catch (e) {
+    return res.status(500).send("server error");
+  }
 })
 
 // 새로운 post 만들기
@@ -179,8 +184,8 @@ router.post('/new', [auth, upload.array('pictures', pageSize)], async (req: Expr
   // 이미지를 문자열 주소의 형태로 변환 후 데이터베이스에 등록
   const pictureAddrPromises = uploadImages(pictures.map(picture => picture.filename))
   const pictureAddrs = await Promise.all(pictureAddrPromises);
-
   const text = req.body?.text;
+  console.log(text);
 
   const post = new postModel({
     pictures: pictureAddrs,
