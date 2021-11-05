@@ -6,7 +6,6 @@ const auth = (req: any, res, next) => {
   // const token = req.body?.token || req.query?.token || req.headers['x-access-token'];
   const token = req.cookies?.credential;
   if (!token) return res.status(403).send("token required");
-
   try {
     const decoded: any = jwt.verify(token, process.env.TOKEN_KEY);
     req.user = {

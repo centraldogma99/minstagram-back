@@ -8,6 +8,7 @@ import { uploadImages } from "../modules/handleImage";
 import { User } from "../types/user";
 import chunkArray from "../modules/chunkArray";
 import reqUser from "../types/reqUser"
+import { getUserInfo } from "../modules/getUserInfo"
 
 declare global {
   namespace Express {
@@ -58,15 +59,6 @@ const validatePost = (post: IPost) => {
 //   }
 //   return true;
 // }
-
-
-
-const getUserInfo = async (id: string) => {
-  if (!id) return;
-  const user = await userModel.findOne({ _id: id });
-  if (!user) return;
-  return user;
-}
 
 // convert user id to user name
 const getUserName = async (id: string) => {
@@ -247,5 +239,23 @@ router.post('/:id/comment', auth, async (req: any, res) => {
 
   return res.json(await removeUserIdFromComment(comment));
 });
+
+router.post('/:id/edit', auth, async (req: any, res) => {
+  const id = req.params?.id;
+  if (!validatePostId(id)) {
+    return res.status(400).send("bad id");
+  }
+  const post = await postModel.findOne({ _id: id });
+  if (!post) return res.status(404).send("id not exist");
+  if (post.authorId !== req.user._id) {
+    return res.status(403).send("you are not author");
+  }
+
+  const { text } = req.body;
+  if (text) post.text = text;
+
+  await post.save();
+  return res.json(await preProcessIdFromPost(post));
+})
 
 export default router;

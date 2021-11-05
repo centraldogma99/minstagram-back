@@ -1,7 +1,16 @@
 import mongoose from "mongoose";
 import { IPost } from "../types/postTypes";
 import { User } from "../types/user"
+import { IChatRoom, IChatMessage } from "../types/chatTypes";
 
+const chatRoomSchema = new mongoose.Schema<IChatRoom>({
+  members: [String],
+  messages: [{
+    author: String,
+    content: String,
+    timestamp: Date
+  }]
+})
 
 const postSchema = new mongoose.Schema<IPost>({
   authorId: String,
@@ -41,3 +50,4 @@ db.on("disconnected", () => {
 export const postModel = mongoose.model("posts", postSchema);
 export const userModel = mongoose.model("users", userSchema);
 export const imageModel = mongoose.model("images", imageSchema);
+export const chatRoomModel = mongoose.model("chatRooms", chatRoomSchema);
