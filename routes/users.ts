@@ -62,7 +62,13 @@ router.post('/changeProfile', [auth, upload.single('profile-picture')],
     await user.save();
     const { _id, name, email, avatar } = user;
     res.json({ _id, name, email, avatar });
-  })
+  }
+)
+
+router.get('/logout', (req, res) => {
+  console.log('/logout')
+  return res.status(200).clearCookie("credential", { path: '/' }).send("successful");
+})
 
 // 현재는 인증 구현 안하고 누구나 접근 가능
 // id를 받아 해당하는 유저의 정보 반환
@@ -152,10 +158,6 @@ router.post('/login', bodyParser.json(), async (req, res) => {
   } catch (e) {
     console.error(e);
   }
-
-  router.get('/logout', (req, res) => {
-    return res.status(200).clearCookie("credential", { path: '/' }).send("successful");
-  })
 })
 
 export default router;

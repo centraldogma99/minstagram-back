@@ -117,7 +117,7 @@ const preProcessIdFromPost = async (post: IPost) => {
   return {
     _id: _id,
     author: {
-      id: authorId,
+      _id: authorId,
       name: author.name,
       avatar: author.avatar,
       email: author.email
