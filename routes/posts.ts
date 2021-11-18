@@ -1,5 +1,5 @@
 import express, { Request, Response } from "express";
-import { postModel, userModel } from "../config/db";
+import { commentModel, postModel, userModel } from "../config/db";
 import auth from "../middlewares/auth";
 import bodyParser from "body-parser";
 import { IComment, IPost, ILike } from "../types/postTypes";
@@ -70,13 +70,15 @@ const getUserName = async (id: string) => {
 
 const removeUserIdFromComment = async (comment: IComment) => {
   if (!comment) return;
-  const { authorId, content, likes } = comment;
+  const { _id, authorId, content, likes } = comment;
   const author = await getUserInfo(authorId) as User;
   return {
+    _id,
     author: {
-      id: authorId,
+      _id: authorId,
       name: author.name,
-      avatar: author.avatar
+      avatar: author.avatar,
+      email: author.email
     },
     content: content,
     likes: likes
@@ -98,7 +100,7 @@ const removeUserIdFromLike = async (like: ILike) => {
 }
 
 // 유저 아이디들을 유저 정보로 바꿔준다(이름, 아바타, id)
-const preProcessIdFromPost = async (post: IPost) => {
+export const preProcessIdFromPost = async (post: IPost) => {
   if (!post) return;
   const { _id, authorId, comments, likes, pictures, text } = post;
   const author = await getUserInfo(authorId) as User;
@@ -115,7 +117,7 @@ const preProcessIdFromPost = async (post: IPost) => {
   );
 
   return {
-    _id: _id,
+    _id,
     author: {
       _id: authorId,
       name: author.name,
@@ -123,18 +125,18 @@ const preProcessIdFromPost = async (post: IPost) => {
       email: author.email
     },
     comments: comments_,
-    text: text,
+    text,
     likes: likes_,
-    pictures: pictures
+    pictures
   };
 }
 
 router.get('/:id', async (req, res) => {
   const id = req.params?.id;
   if (!validatePostId(id)) {
-    return res.status(400).send("bad id")
+    return res.status(400).send("bad id");
   }
-  const post = await postModel.findById(id)
+  const post = await postModel.findById(id);
 
   if (!post) return res.status(404).send("id not exist");
 
@@ -143,7 +145,6 @@ router.get('/:id', async (req, res) => {
   return res.json(postWithUserName);
 });
 
-// 로그인만 되어있다면 삭제 가능하도록 되어있음(auth 미들웨어) TODO: 삭제 권한 관리
 router.delete('/:id', auth, async (req, res) => {
   // 아래 5라인 중복됨
   const id = req.params?.id;
@@ -167,7 +168,6 @@ router.delete('/:id', auth, async (req, res) => {
 // 새로운 post 만들기
 // Request Body: { pictures: string[] }
 // author는 id형태로 반환된다.
-// FIXME: req any
 router.post('/new', [auth, upload.array('pictures', pageSize)], async (req: Express.Request, res: Response) => {
   if (!req.files) {
     return res.status(400).send("bad post: no images");
@@ -177,7 +177,6 @@ router.post('/new', [auth, upload.array('pictures', pageSize)], async (req: Expr
   const pictureAddrPromises = uploadImages(pictures.map(picture => picture.filename))
   const pictureAddrs = await Promise.all(pictureAddrPromises);
   const text = req.body?.text;
-  console.log(text);
 
   const post = new postModel({
     pictures: pictureAddrs,
@@ -188,6 +187,7 @@ router.post('/new', [auth, upload.array('pictures', pageSize)], async (req: Expr
   });
   await post.save();
   const postWithUserName = await preProcessIdFromPost(post);
+
   return res.json(postWithUserName);
 })
 
@@ -229,16 +229,42 @@ router.post('/:id/comment', auth, async (req: any, res) => {
     return res.status(400).send("bad comment");
   }
 
-  const comment: IComment = {
+  const comment = {
+    _id: post.comments.length,
     content: content,
     likes: [],
     authorId: req.user._id
-  };
+  }
+
   post.comments.push(comment);
   post.save();
 
   return res.json(await removeUserIdFromComment(comment));
 });
+
+router.delete('/:postId/comment/:commentId', auth, async (req, res) => {
+  const { postId, commentId } = req.params;
+  console.log(commentId)
+  if (!validatePostId(postId)) {
+    return res.status(400).send("bad id");
+  }
+  if (isNaN(Number(commentId))) return res.status(400).send('bad index');
+  const post = await postModel.findOne({ _id: postId });
+  if (!post) return res.status(404).send("postid not exist");
+  console.log(post.comments)
+
+  const c = post.comments.find(comment => comment._id === Number(commentId));
+  const i = post.comments.indexOf(c);
+  if (!c) return res.status(404).send("comment not exist");
+  if (c.authorId !== req.user._id) {
+    return res.status(403).send("you are not author");
+  }
+
+  post.comments.splice(i, 1);
+  post.save();
+
+  return res.send("delete successful");
+})
 
 router.post('/:id/edit', auth, async (req: any, res) => {
   const id = req.params?.id;

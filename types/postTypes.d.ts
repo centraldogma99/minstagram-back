@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { User } from "./user";
 
 export interface IComment {
+  _id: number,
   authorId: string,
   content: string,
   likes: ILike[]

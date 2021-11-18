@@ -9,11 +9,13 @@ router.get('/:id', (req, res) => {
   const id = req.params.id;
   imageModel.findOne({ accessAddress: id }, (err, data) => {
     if (err) {
-      res.status(500).send("Internal Server Error");
-    } else if (data) {
-      res.sendFile(path.resolve(`${__dirname}/../uploads/images/${data.filename}`));
+      return res.status(404).send("Not Found");
+    }
+    if (data) {
+      return res.sendFile(path.resolve(`${__dirname}/../uploads/images/${data.filename}`));
     } else {
-      res.status(404).send("Not Found");
+      // res.status(404).send("Not Found");
+      return res.sendFile(path.resolve(`${__dirname}/../uploads/assets/defaultProfile.png`));
     }
   });
 })

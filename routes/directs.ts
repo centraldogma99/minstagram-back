@@ -11,11 +11,11 @@ router.use(bodyParser.json());
 
 const preProcessIdFromMessages = async (messages: IChatMessage[]) => {
   return Promise.all(messages.map(async message => {
-    const { author, ...rest } = message;
+    const { author, content, timestamp } = message;
     const user = await getUserInfo(author);
     return {
       author: docToUser(user),
-      ...rest
+      content, timestamp
     }
   }))
 }
@@ -33,8 +33,33 @@ const preProcessIdFromChatRoom = async (chatRoom: IChatRoom) => {
   return {
     _id: chatRoom._id,
     members,
-    messages
+    messages,
+    bookmarks: chatRoom.bookmarks
   };
+}
+
+const recordBookmark = async (chatRoomId: string, userId: string | string[], index: number) => {
+  const chatRoom = await chatRoomModel.findById(chatRoomId);
+  if (index === -1) {
+    index = chatRoom.messages.length - 1;
+  }
+  if (Array.isArray(userId)) {
+    userId.forEach(uid => {
+      chatRoom.members.forEach((id, i) => {
+        if (id === uid) {
+          chatRoom.bookmarks[i] = index;
+        }
+      })
+    })
+  } else {
+    chatRoom.members.forEach((id, i) => {
+      if (id === userId) {
+        chatRoom.bookmarks[i] = index;
+      }
+    })
+  }
+
+  chatRoom.save();
 }
 
 
@@ -59,6 +84,8 @@ router.post('/newRoom', async (req, res) => {
     messages: []
   })
 
+  await recordBookmark(chatRoom._id, members, 0);
+
   return res.send(chatRoom._id);
 })
 
@@ -68,9 +95,10 @@ router.get('/withUsers', async (req, res) => {
   if (query.length === 0) return res.status(400).send({ error: 'userId1 and userId2 are required' });
 
   const chatRooms: IChatRoom[] = await chatRoomModel.find({ members: { $all: query } });
-  console.log(chatRooms)
+
   if (!chatRooms || chatRooms.length === 0) return res.status(404).send("no such chatroom");
 
+  //TODO 채팅 내역까지 보낼 필요는 없을듯
   return res.json(await Promise.all(chatRooms.map(chatRoom => preProcessIdFromChatRoom(chatRoom))))
 })
 
@@ -79,6 +107,17 @@ router.get('/:id', async (req, res) => {
   if (!chatRoom) return res.status(404).send("no such chatroom");
 
   return res.json(await preProcessIdFromChatRoom(chatRoom))
+})
+
+// roomId, userId를 받아, bookmark를 가장 마지막 항목으로 바꾼다.
+router.post('/updateBookmark', async (req, res) => {
+  const { roomId, userId } = req.body;
+  if (!roomId) return res.status(400).send({ error: 'roomId is required' });
+  if (!userId) return res.status(400).send({ error: 'userId is required' });
+
+  await recordBookmark(roomId, userId, -1);
+
+  return res.send("successful");
 })
 
 export default router;

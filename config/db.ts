@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { IPost } from "../types/postTypes";
+import { IPost, IComment } from "../types/postTypes";
 import { User } from "../types/user"
 import { IChatRoom, IChatMessage } from "../types/chatTypes";
 
@@ -9,7 +9,15 @@ const chatRoomSchema = new mongoose.Schema<IChatRoom>({
     author: String,
     content: String,
     timestamp: Date
-  }]
+  }],
+  bookmarks: { type: [Number], default: [0, 0] }
+})
+
+const commentSchema = new mongoose.Schema<IComment>({
+  _id: Number,
+  authorId: String,
+  content: String,
+  likes: [{ authorId: String }]
 })
 
 const postSchema = new mongoose.Schema<IPost>({
@@ -17,11 +25,7 @@ const postSchema = new mongoose.Schema<IPost>({
   pictures: [String],
   likes: [{ authorId: String }],
   text: String,
-  comments: [{
-    authorId: String,
-    content: String,
-    likes: [{ authorId: String }]
-  }]
+  comments: [commentSchema]
 })
 
 const userSchema = new mongoose.Schema<User>({
@@ -51,3 +55,4 @@ export const postModel = mongoose.model("posts", postSchema);
 export const userModel = mongoose.model("users", userSchema);
 export const imageModel = mongoose.model("images", imageSchema);
 export const chatRoomModel = mongoose.model("chatRooms", chatRoomSchema);
+export const commentModel = mongoose.model("comments", commentSchema);

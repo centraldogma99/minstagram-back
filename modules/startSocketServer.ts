@@ -61,26 +61,25 @@ const startSocketServer = (server) => {
 
     socket.on('disconnect', async (reason) => {
       console.log('disconnect');
-      try {
-        // 아래 메시지는 테스트 과정에서만 쓸것임
-        const message = { author: (<any>socket).userId, content: "님이 퇴장했습니다.", timestamp: new Date() }
-        const res = await chatRoomModel.updateOne({ "_id": (<any>socket).activeRoom }, {
-          $push: {
-            "messages": message
-          }
-        })
-        console.log(res);
+      // try {
+      //   // 아래 메시지는 테스트 과정에서만 쓸것임
+      //   const message = { author: (<any>socket).userId, content: "님이 퇴장했습니다.", timestamp: new Date() }
+      //   const res = await chatRoomModel.updateOne({ "_id": (<any>socket).activeRoom }, {
+      //     $push: {
+      //       "messages": message
+      //     }
+      //   })
 
-        const { content, timestamp } = message;
-        const author = docToUser(await getUserInfo(message.author));
-        io.to((<any>socket).activeRoom).emit('messageEvent', {
-          author,
-          content,
-          timestamp
-        })
-      } catch (e) {
-        console.error(e);
-      }
+      //   const { content, timestamp } = message;
+      //   const author = docToUser(await getUserInfo(message.author));
+      //   io.to((<any>socket).activeRoom).emit('messageEvent', {
+      //     author,
+      //     content,
+      //     timestamp
+      //   })
+      // } catch (e) {
+      //   console.error(e);
+      // }
     })
   })
 }

@@ -6,6 +6,7 @@ import bodyParser from "body-parser";
 import auth from "../middlewares/auth";
 import multer from "multer";
 import { uploadImages } from "../modules/handleImage";
+import { preProcessIdFromPost } from "./posts";
 
 import reqUser from "../types/reqUser"
 
@@ -30,10 +31,6 @@ const upload = multer({
     }
   }),
 });
-
-router.get('/', (req, res) => {
-  res.send("hi here is /users");
-})
 
 // 내 정보 반환
 // FIXME: req any
@@ -65,14 +62,23 @@ router.post('/changeProfile', [auth, upload.single('profile-picture')],
   }
 )
 
-router.get('/logout', (req, res) => {
-  console.log('/logout')
+router.get('/logout', auth, (req, res) => {
   return res.status(200).clearCookie("credential", { path: '/' }).send("successful");
+})
+
+
+router.get('/name', async (req, res) => {
+  const nameParam = req.query?.name as string;
+  if (!nameParam) return res.status(400).send("bad request: no name");
+  const user = await userModel.findOne({ name: nameParam });
+  if (!user) return res.status(404).send("no such user");
+  const { _id, name, email, avatar } = user;
+  res.json({ _id, name, email, avatar });
 })
 
 // 현재는 인증 구현 안하고 누구나 접근 가능
 // id를 받아 해당하는 유저의 정보 반환
-router.get('/:id', async (req, res) => {
+router.get('/:id', auth, async (req, res) => {
   try {
     const id = req.params?.id;
     if (!id) return res.status(400).send("bad request: no id");
@@ -85,7 +91,7 @@ router.get('/:id', async (req, res) => {
   }
 })
 
-router.get('/:id/posts', async (req, res) => {
+router.get('/:id/posts', auth, async (req, res) => {
   const id = req.params?.id;
   if (!id) return res.status(400).send("bad request: no id");
   const user = await userModel.findOne({ _id: id });
@@ -93,17 +99,10 @@ router.get('/:id/posts', async (req, res) => {
 
   const posts = await postModel.find({ authorId: user._id });
   if (!posts) return res.status(404).send("no posts");
-  res.json(posts);
+  const posts_ = await Promise.all(posts.map(preProcessIdFromPost))
+  res.json(posts_);
 })
 
-router.get('/name/:name', async (req, res) => {
-  const nameParam = req.params?.name;
-  if (!nameParam) return res.status(400).send("bad request: no name");
-  const user = await userModel.findOne({ name: nameParam });
-  if (!user) return res.status(404).send("no such user");
-  const { _id, name, email, avatar } = user;
-  res.json({ _id, name, email, avatar });
-})
 
 router.post('/register', bodyParser.json(), async (req, res) => {
   try {
@@ -111,7 +110,8 @@ router.post('/register', bodyParser.json(), async (req, res) => {
     if (!name || !email || !password) return res.status(400).send("bad request");
 
     const oldUser = await userModel.findOne({ email });
-    if (oldUser) return res.status(409).send("email already registered");
+    const oldUserByName = await userModel.findOne({ name });
+    if (oldUser || oldUserByName) return res.status(409).send("email/name already registered");
 
     const encrypted = await bcrypt.hash(password, 10);
 
@@ -130,9 +130,7 @@ router.post('/register', bodyParser.json(), async (req, res) => {
 
 // 토큰 형식 : _id: objectID(string), email, name
 router.post('/login', bodyParser.json(), async (req, res) => {
-  console.log('login')
   try {
-    console.log(req.body);
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).send("bad request")
 
