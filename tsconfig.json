@@ -18,10 +18,12 @@
       "./@types",
       "./node_modules/@types"
     ],
-    // "paths": {
-    //   "*": [
-    //     "./@types/*"
-    //   ]
-    // }
-  }
+  },
+  "include": [
+    "./*.ts",
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.spec.ts"
+  ]
 }

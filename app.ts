@@ -15,7 +15,8 @@ dotenv.config();
 const app = express();
 const portNumber = 9000;
 
-app.use(cors({ origin: ['http://localhost:3000'], credentials: true }));
+app.use(cors({ origin: ['http://localhost:3000', 'http://ec2-3-131-119-122.us-east-2.compute.amazonaws.com:3000'], credentials: true }));
+// app.use(cors())
 app.use(cookieParser());
 
 app.use('/users', userRouter);
