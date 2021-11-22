@@ -5,5 +5,6 @@ export interface User {
   name: string,
   email: string,
   password: string,
-  avatar: string
+  avatar: string,
+  following?: Array<mongoose.Types.ObjectId>,
 }

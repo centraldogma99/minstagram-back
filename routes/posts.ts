@@ -203,11 +203,20 @@ router.get('/', async (req, res) => {
   if (!posts || posts.length === 0) return res.status(404).send("no posts");
 
   const postsChunk = chunkArray<IPost>(posts, pageSizeNum);
+  const totalPosts = posts.length;
+  const totalPages = postsChunk.length;
+  if (totalPages < Number(page)) return res.status(400).send('bad request')
 
   const data = await Promise.all(postsChunk[pageNum - 1].map(
     async (post: IPost) => await preProcessIdFromPost(post)
   ))
-  return res.json(data)
+  return res.json({
+    totalPosts,
+    totalPages,
+    currentPage: pageNum,
+    pageSize: pageSizeNum,
+    data
+  })
 })
 
 // post로 코멘트 받아서 저장

@@ -32,6 +32,25 @@ const upload = multer({
   }),
 });
 
+router.post('/follow', async (req, res) => {
+  const { userId, followId } = req.body;
+  const user = await userModel.findById(userId)
+  if (!user) {
+    return res.status(404).send("user not found")
+  } else {
+    const fUser = await userModel.findById(followId);
+    if (!fUser) return res.status(404).send("user not found")
+    user.following.push(followId);
+    user.save((err) => {
+      if (err) {
+        res.status(500).send("internal error");
+      } else {
+        res.status(200).send("successful");
+      }
+    });
+  }
+})
+
 // 내 정보 반환
 // FIXME: req any
 router.get('/me', auth, async (req: Express.Request, res) => {
