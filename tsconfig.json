@@ -11,19 +11,21 @@
     "target": "es5",
     "module": "commonjs",
     "inlineSourceMap": true,
-    "moduleResolution": "node",
     "esModuleInterop": true,
-    "resolveJsonModule": true,
     "typeRoots": [
       "./@types",
       "./node_modules/@types"
     ],
   },
   "include": [
-    "./*.ts",
-  ],
-  "exclude": [
-    "node_modules",
-    "**/*.spec.ts"
+    "./config/*",
+    "./middlewares/*",
+    "./modules/*",
+    "./routes/*",
+    "./types/*",
+    "./uploads/assets/*",
+    "./uploads/*",
+    "./app.ts",
+    "./.env"
   ]
 }

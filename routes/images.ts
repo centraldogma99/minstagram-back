@@ -12,10 +12,10 @@ router.get('/:id', (req, res) => {
       return res.status(404).send("Not Found");
     }
     if (data) {
-      return res.sendFile(path.resolve(`${__dirname}/../uploads/images/${data.filename}`));
+      return res.sendFile(path.resolve(`${__dirname}/../../uploads/images/${data.filename}`));
     } else {
       // res.status(404).send("Not Found");
-      return res.sendFile(path.resolve(`${__dirname}/../uploads/assets/defaultProfile.png`));
+      return res.sendFile(path.resolve(`${__dirname}/../../uploads/assets/defaultProfile.png`));
     }
   });
 })

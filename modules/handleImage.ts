@@ -9,7 +9,7 @@ export const uploadImages = (pictureNames: string[]) => {
     while (isOccupied) {
       randomStr = randomString(8);
       const res = await imageModel.find({ accessAddress: randomStr });
-      isOccupied = res.length > 0 ? true : false;
+      isOccupied = res.length > 0;
     }
 
     const data = new imageModel({
