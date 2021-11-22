@@ -1,5 +1,5 @@
 import express, { Request, Response } from "express";
-import { commentModel, postModel, userModel } from "../config/db";
+import { postModel, userModel } from "../config/db";
 import auth from "../middlewares/auth";
 import bodyParser from "body-parser";
 import { IComment, IPost, ILike } from "../types/postTypes";
@@ -205,7 +205,7 @@ router.get('/', async (req, res) => {
   const postsChunk = chunkArray<IPost>(posts, pageSizeNum);
   const totalPosts = posts.length;
   const totalPages = postsChunk.length;
-  if (totalPages < Number(page)) return res.status(400).send('bad request')
+  if (totalPages < Number(page)) return res.status(200).json({})
 
   const data = await Promise.all(postsChunk[pageNum - 1].map(
     async (post: IPost) => await preProcessIdFromPost(post)
