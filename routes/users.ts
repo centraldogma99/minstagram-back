@@ -7,6 +7,7 @@ import auth from "../middlewares/auth";
 import multer from "multer";
 import { uploadImages } from "../modules/handleImage";
 import { preProcessIdFromPost } from "./posts";
+import mongoose from "mongoose"
 
 import reqUser from "../types/reqUser"
 
@@ -98,6 +99,7 @@ router.get('/name', async (req, res) => {
 // 현재는 인증 구현 안하고 누구나 접근 가능
 // id를 받아 해당하는 유저의 정보 반환
 router.get('/:id', auth, async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).send("bad id");
   try {
     const id = req.params?.id;
     if (!id) return res.status(400).send("bad request: no id");
@@ -162,7 +164,7 @@ router.post('/login', bodyParser.json(), async (req, res) => {
       { _id: user._id, email: email, name: user.name },
       process.env.TOKEN_KEY as jwt.Secret,
       {
-        expiresIn: "1h"
+        expiresIn: "24h"
       }
     )
 

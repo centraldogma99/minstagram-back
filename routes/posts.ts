@@ -9,6 +9,7 @@ import { User } from "../types/user";
 import chunkArray from "../modules/chunkArray";
 import reqUser from "../types/reqUser"
 import { getUserInfo } from "../modules/getUserInfo"
+import mongoose from "mongoose"
 
 declare global {
   namespace Express {
@@ -38,8 +39,7 @@ const pageSize = 10;
 router.use(bodyParser.json());
 
 const validatePostId = (id: any) => {
-  if (!id) return false;
-  return true;
+  return mongoose.Types.ObjectId.isValid(id)
 }
 
 const validatePost = (post: IPost) => {
