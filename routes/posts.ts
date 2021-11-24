@@ -1,4 +1,4 @@
-import express, { Request, Response } from "express";
+import express, { Response } from "express";
 import { postModel, userModel } from "../config/db";
 import auth from "../middlewares/auth";
 import bodyParser from "body-parser";
@@ -70,18 +70,17 @@ const getUserName = async (id: string) => {
 
 const removeUserIdFromComment = async (comment: IComment) => {
   if (!comment) return;
-  const { _id, authorId, content, likes } = comment;
+  const { _id, content, likes, timestamp, authorId } = comment;
   const author = await getUserInfo(authorId) as User;
   return {
-    _id,
+    _id, content, likes,
+    timestamp: Number(timestamp),
     author: {
       _id: authorId,
       name: author.name,
       avatar: author.avatar,
       email: author.email
-    },
-    content: content,
-    likes: likes
+    }
   };
 }
 
@@ -102,7 +101,7 @@ const removeUserIdFromLike = async (like: ILike) => {
 // 유저 아이디들을 유저 정보로 바꿔준다(이름, 아바타, id)
 export const preProcessIdFromPost = async (post: IPost) => {
   if (!post) return;
-  const { _id, authorId, comments, likes, pictures, text } = post;
+  const { _id, pictures, text, timestamp, authorId, comments, likes } = post;
   const author = await getUserInfo(authorId) as User;
   if (!author) return;
   const comments_ = await Promise.all(
@@ -117,7 +116,8 @@ export const preProcessIdFromPost = async (post: IPost) => {
   );
 
   return {
-    _id,
+    _id, pictures, text,
+    timestamp: Number(timestamp),
     author: {
       _id: authorId,
       name: author.name,
@@ -125,9 +125,7 @@ export const preProcessIdFromPost = async (post: IPost) => {
       email: author.email
     },
     comments: comments_,
-    text,
-    likes: likes_,
-    pictures
+    likes: likes_
   };
 }
 
@@ -166,7 +164,7 @@ router.delete('/:id', auth, async (req, res) => {
 })
 
 // 새로운 post 만들기
-// Request Body: { pictures: string[] }
+// Request Body: { text: string[] }
 // author는 id형태로 반환된다.
 router.post('/new', [auth, upload.array('pictures', pageSize)], async (req: Express.Request, res: Response) => {
   if (!req.files) {
@@ -183,7 +181,8 @@ router.post('/new', [auth, upload.array('pictures', pageSize)], async (req: Expr
     authorId: req.user._id,
     text: text,
     likes: [],
-    comments: []
+    comments: [],
+    timestamp: new Date()
   });
   await post.save();
   const postWithUserName = await preProcessIdFromPost(post);
@@ -242,7 +241,8 @@ router.post('/:id/comment', auth, async (req: any, res) => {
     _id: post.comments.length,
     content: content,
     likes: [],
-    authorId: req.user._id
+    authorId: req.user._id,
+    timestamp: new Date()
   }
 
   post.comments.push(comment);
@@ -253,14 +253,12 @@ router.post('/:id/comment', auth, async (req: any, res) => {
 
 router.delete('/:postId/comment/:commentId', auth, async (req, res) => {
   const { postId, commentId } = req.params;
-  console.log(commentId)
   if (!validatePostId(postId)) {
     return res.status(400).send("bad id");
   }
   if (isNaN(Number(commentId))) return res.status(400).send('bad index');
   const post = await postModel.findOne({ _id: postId });
   if (!post) return res.status(404).send("postid not exist");
-  console.log(post.comments)
 
   const c = post.comments.find(comment => comment._id === Number(commentId));
   const i = post.comments.indexOf(c);

@@ -17,7 +17,8 @@ const commentSchema = new mongoose.Schema<IComment>({
   _id: Number,
   authorId: String,
   content: String,
-  likes: [{ authorId: String }]
+  likes: [{ authorId: String }],
+  timestamp: Date
 })
 
 const postSchema = new mongoose.Schema<IPost>({
@@ -25,7 +26,8 @@ const postSchema = new mongoose.Schema<IPost>({
   pictures: [String],
   likes: [{ authorId: String }],
   text: String,
-  comments: [commentSchema]
+  comments: [commentSchema],
+  timestamp: Date
 })
 
 const userSchema = new mongoose.Schema<User>({

@@ -5,7 +5,8 @@ export interface IComment {
   _id: number,
   authorId: string,
   content: string,
-  likes: ILike[]
+  likes: ILike[],
+  timestamp: Date
 }
 
 export interface ILike {
@@ -14,10 +15,10 @@ export interface ILike {
 
 export interface IPost {
   _id: mongoose.Types.ObjectId,
-  // author objectID와 같은 일련번호.
   authorId: string,
   pictures: string[],
   likes: ILike[],
   comments: IComment[],
-  text: string
+  text: string,
+  timestamp: Date
 }
