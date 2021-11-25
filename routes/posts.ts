@@ -200,7 +200,7 @@ router.get('/', async (req, res) => {
 
   const posts: IPost[] = await postModel.find();
   if (!posts || posts.length === 0) return res.status(404).send("no posts");
-
+  console.log(posts)
   const postsChunk = chunkArray<IPost>(posts, pageSizeNum);
   const totalPosts = posts.length;
   const totalPages = postsChunk.length;
@@ -209,6 +209,7 @@ router.get('/', async (req, res) => {
   const data = await Promise.all(postsChunk[pageNum - 1].map(
     async (post: IPost) => await preProcessIdFromPost(post)
   ))
+  console.log(data)
   return res.json({
     totalPosts,
     totalPages,
