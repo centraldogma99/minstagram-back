@@ -124,6 +124,23 @@ router.get('/:id/posts', auth, async (req, res) => {
   res.json(posts_);
 })
 
+router.get('/:id/profile', async (req, res) => {
+  const { id } = req.params;
+  if (!id) return res.status(400).send('bad request')
+
+  try {
+    const user = await userModel.findById(id);
+    if (!user) return res.status(404).send('no matching user')
+
+    const { bio, name } = user;
+    return res.status(200).json({
+      bio, name
+    })
+  } catch (e) {
+    console.error(e);
+  }
+})
+
 
 router.post('/register', bodyParser.json(), async (req, res) => {
   try {
@@ -174,6 +191,41 @@ router.post('/login', bodyParser.json(), async (req, res) => {
       avatar: user.avatar,
       email: user.email
     });
+  } catch (e) {
+    console.error(e);
+  }
+})
+
+// 계정 이름, bio 변경
+router.post('/profile', [auth, bodyParser.json()], async (req, res) => {
+  const { name, bio } = req.body;
+  if (!name && !bio) return res.status(400).send("bad request")
+  try {
+    const user = await userModel.findById(req.user._id);
+    // 아래 라인은 실행될 수 없음
+    // if (!user) return res.status(404).send("no matching user");
+
+    if (name) user.name = name;
+    if (bio) user.bio = bio;
+    user.save();
+
+    res.status(200).send('successful')
+  } catch (e) {
+    console.error(e);
+  }
+})
+
+
+router.post('/profile', [auth, bodyParser.json()], async (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).send('bad request')
+  try {
+    const user = await userModel.findById(req.user._id)
+
+    user.password = password;
+    user.save();
+
+    res.status(200).send('successful')
   } catch (e) {
     console.error(e);
   }

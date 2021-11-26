@@ -34,7 +34,8 @@ const userSchema = new mongoose.Schema<User>({
   avatar: String,
   name: String,
   email: String,
-  password: String
+  password: String,
+  bio: String
 })
 
 const imageSchema = new mongoose.Schema({
