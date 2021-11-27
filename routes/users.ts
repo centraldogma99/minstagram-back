@@ -52,6 +52,22 @@ router.post('/follow', async (req, res) => {
   }
 })
 
+router.get('/namecheck', async (req, res) => {
+  const { name } = req.query;
+  const user = await userModel.findOne({ name: <string>name });
+  if (user) {
+    res.status(200).json({
+      result: false,
+      msg: "name already taken"
+    });
+  } else {
+    res.status(200).json({
+      result: true,
+      msg: "name available"
+    })
+  }
+})
+
 // 내 정보 반환
 // FIXME: req any
 router.get('/me', auth, async (req: Express.Request, res) => {

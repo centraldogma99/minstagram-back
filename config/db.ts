@@ -35,7 +35,7 @@ const userSchema = new mongoose.Schema<User>({
   name: String,
   email: String,
   password: String,
-  bio: String
+  bio: { type: String, default: "" }
 })
 
 const imageSchema = new mongoose.Schema({
