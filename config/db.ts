@@ -35,6 +35,7 @@ const userSchema = new mongoose.Schema<User>({
   name: String,
   email: String,
   password: String,
+  following: [String],
   bio: { type: String, default: "" }
 })
 

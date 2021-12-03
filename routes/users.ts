@@ -33,14 +33,21 @@ const upload = multer({
   }),
 });
 
-router.post('/follow', async (req, res) => {
-  const { userId, followId } = req.body;
-  const user = await userModel.findById(userId)
+router.post('/follow', [auth, bodyParser.json()], async (req, res) => {
+  const { followId } = req.body;
+  if (!followId) return res.status(400).send({ error: "Missing followId" });
+
+  if (followId === req.user._id) return res.status(400).send("You can't follow yourself");
+
+  const user = await userModel.findById(req.user._id)
   if (!user) {
     return res.status(404).send("user not found")
   } else {
     const fUser = await userModel.findById(followId);
     if (!fUser) return res.status(404).send("user not found")
+    if (user.following.includes(followId))
+      return res.status(400).send("already following")
+
     user.following.push(followId);
     user.save((err) => {
       if (err) {
@@ -50,6 +57,44 @@ router.post('/follow', async (req, res) => {
       }
     });
   }
+})
+
+router.post('/unfollow', [auth, bodyParser.json()], async (req, res) => {
+  const { followId } = req.body;
+  if (!followId) return res.status(400).send({ error: "Missing followId" });
+
+  if (followId === req.user._id) return res.status(400).send("You can't unfollow yourself");
+
+  const user = await userModel.findById(req.user._id)
+  if (!user) {
+    return res.status(404).send("user not found")
+  } else {
+    const fUser = await userModel.findById(followId);
+    if (!fUser) return res.status(404).send("user not found")
+    if (!user.following.includes(followId))
+      return res.status(400).send("already not following")
+
+    const i = user.following.indexOf(followId);
+    user.following = [...user.following.slice(0, i), ...user.following.slice(i + 1)]
+    user.save((err) => {
+      if (err) {
+        res.status(500).send("internal error");
+      } else {
+        res.status(200).send("successful");
+      }
+    });
+  }
+})
+
+router.get('/follow', async (req, res) => {
+  const { userId } = req.query;
+  if (!userId) return res.status(400).send("userId is required")
+  const user = await userModel.findById(userId);
+  if (!user) {
+    return res.status(404).send("user not found")
+  }
+  res.status(200).send(user.following);
+  return;
 })
 
 router.get('/namecheck', async (req, res) => {
@@ -70,7 +115,7 @@ router.get('/namecheck', async (req, res) => {
 
 // 내 정보 반환
 // FIXME: req any
-router.get('/me', auth, async (req: Express.Request, res) => {
+router.get('/me', [auth], async (req: Express.Request, res) => {
   const user = await userModel.findOne({ _id: req.user?._id });
   if (!user) return res.status(404).send("User not found");
   const { _id, name, email, avatar } = user;
