@@ -193,12 +193,27 @@ router.post('/new', [auth, upload.array('pictures', pageSize)], async (req: Expr
 // query로 페이지, 페이지 사이즈 받아서 그만큼 반환
 // query로 전달된 값이 없으면 1페이지, 10사이즈로 받아서 반환
 router.get('/', async (req, res) => {
-  const { page, pageSize } = req.query;
+  const { page, pageSize, userId } = req.query;
 
   const pageNum = page ? Number(page) : 1;
   const pageSizeNum = pageSize ? Number(pageSize) : 10;
 
-  const posts: IPost[] = await postModel.find();
+  let posts: IPost[];
+  if (!userId) posts = await postModel.find();
+  else {
+    const user: User = await userModel.findById(userId);
+    if (user.following?.length === 0) {
+      posts = await postModel.find({ 'authorId': { $ne: userId as string } });
+    } else {
+      posts = await postModel.find({
+        'authorId': {
+          $in: user.following.map(
+            _id => _id.toString()
+          )
+        }
+      });
+    }
+  }
   if (!posts || posts.length === 0) return res.status(404).send("no posts");
   const postsChunk = chunkArray<IPost>(posts, pageSizeNum);
   const totalPosts = posts.length;

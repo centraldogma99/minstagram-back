@@ -49,6 +49,8 @@ router.post('/follow', [auth, bodyParser.json()], async (req, res) => {
       return res.status(400).send("already following")
 
     user.following.push(followId);
+    fUser.follower.push(req.user._id);
+    fUser.save();
     user.save((err) => {
       if (err) {
         res.status(500).send("internal error");
@@ -75,7 +77,10 @@ router.post('/unfollow', [auth, bodyParser.json()], async (req, res) => {
       return res.status(400).send("already not following")
 
     const i = user.following.indexOf(followId);
+    const j = fUser.follower.indexOf(req.user._id);
     user.following = [...user.following.slice(0, i), ...user.following.slice(i + 1)]
+    fUser.follower = [...fUser.follower.slice(0, j), ...fUser.follower.slice(j + 1)]
+    fUser.save();
     user.save((err) => {
       if (err) {
         res.status(500).send("internal error");
@@ -94,6 +99,17 @@ router.get('/follow', async (req, res) => {
     return res.status(404).send("user not found")
   }
   res.status(200).send(user.following);
+  return;
+})
+
+router.get('/follower', async (req, res) => {
+  const { userId } = req.query;
+  if (!userId) return res.status(400).send("userId is required")
+  const user = await userModel.findById(userId);
+  if (!user) {
+    return res.status(404).send("user not found")
+  }
+  res.status(200).send(user.follower);
   return;
 })
 

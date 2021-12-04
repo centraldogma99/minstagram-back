@@ -7,5 +7,6 @@ export interface User {
   password: string,
   avatar: string,
   following?: Array<mongoose.Types.ObjectId>,
+  follower?: Array<mongoose.Types.ObjectId>,
   bio?: string,
 }
