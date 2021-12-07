@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { IPost, IComment } from "../types/postTypes";
 import { User } from "../types/user"
-import { IChatRoom, IChatMessage } from "../types/chatTypes";
+import { IChatRoom } from "../types/chatTypes";
 
 const chatRoomSchema = new mongoose.Schema<IChatRoom>({
   members: [String],
@@ -46,6 +46,7 @@ const imageSchema = new mongoose.Schema({
 })
 
 mongoose.connect("mongodb://localhost:27017/minstagram");
+// mongoose.set('debug', true);
 const db = mongoose.connection;
 db.on("error", console.error.bind(console, "connection error: "));
 db.on("open", () => {

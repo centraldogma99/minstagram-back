@@ -214,6 +214,7 @@ router.get('/', async (req, res) => {
       });
     }
   }
+  posts.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
   if (!posts || posts.length === 0) return res.status(404).send("no posts");
   const postsChunk = chunkArray<IPost>(posts, pageSizeNum);
   const totalPosts = posts.length;

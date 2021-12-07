@@ -33,6 +33,11 @@ const upload = multer({
   }),
 });
 
+const validateName = (name: string) => {
+  if (name.match(/[^A-Za-z._0-9]/g)) return false;
+  else return true;
+}
+
 router.post('/follow', [auth, bodyParser.json()], async (req, res) => {
   const { followId } = req.body;
   if (!followId) return res.status(400).send({ error: "Missing followId" });
@@ -173,6 +178,24 @@ router.get('/name', async (req, res) => {
   res.json({ _id, name, email, avatar });
 })
 
+router.get('/search', async (req, res) => {
+  const { text } = req.query;
+  if (!text) return res.status(400).send('bad request')
+  try {
+    const users = await userModel.find({ name: new RegExp(`${text}`) })
+    return res.json(users.map(user => {
+      return {
+        _id: user._id,
+        name: user.name,
+        avatar: user.avatar,
+        email: user.email
+      }
+    }));
+  } catch (e) {
+    console.error(e);
+  }
+})
+
 // 현재는 인증 구현 안하고 누구나 접근 가능
 // id를 받아 해당하는 유저의 정보 반환
 router.get('/:id', auth, async (req, res) => {
@@ -227,6 +250,7 @@ router.post('/register', bodyParser.json(), async (req, res) => {
     const oldUser = await userModel.findOne({ email });
     const oldUserByName = await userModel.findOne({ name });
     if (oldUser || oldUserByName) return res.status(409).send("email/name already registered");
+    if (!validateName(name)) return res.status(400).send("bad request: name contains invalid characters");
 
     const encrypted = await bcrypt.hash(password, 10);
 
@@ -281,6 +305,7 @@ router.post('/profile', [auth, bodyParser.json()], async (req, res) => {
     const user = await userModel.findById(req.user._id);
     // 아래 라인은 실행될 수 없음
     // if (!user) return res.status(404).send("no matching user");
+    if (!validateName(name)) return res.status(400).send("bad request: name contains invalid characters");
 
     if (name) user.name = name;
     if (bio) user.bio = bio;
@@ -307,5 +332,7 @@ router.post('/profile', [auth, bodyParser.json()], async (req, res) => {
     console.error(e);
   }
 })
+
+
 
 export default router;
