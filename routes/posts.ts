@@ -202,6 +202,7 @@ router.get('/', async (req, res) => {
   if (!userId) posts = await postModel.find();
   else {
     const user: User = await userModel.findById(userId);
+    if (!user) return res.status(404).send("user not exist")
     if (user.following?.length === 0) {
       posts = await postModel.find({ 'authorId': { $ne: userId as string } });
     } else {

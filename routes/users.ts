@@ -181,6 +181,7 @@ router.get('/name', async (req, res) => {
 router.get('/search', async (req, res) => {
   const { text } = req.query;
   if (!text) return res.status(400).send('bad request')
+  if ((<string>text).includes('\\')) return res.status(400).send('bad request')
   try {
     const users = await userModel.find({ name: new RegExp(`${text}`) })
     return res.json(users.map(user => {
