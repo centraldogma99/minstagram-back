@@ -318,19 +318,21 @@ router.post('/profile', [auth, bodyParser.json()], async (req, res) => {
   }
 })
 
-
-router.post('/profile', [auth, bodyParser.json()], async (req, res) => {
-  const { password } = req.body;
-  if (!password) return res.status(400).send('bad request')
+router.post('/changePassword', [auth, bodyParser.json()], async (req, res) => {
+  const { prevPassword, newPassword } = req.body;
+  if (!prevPassword || !newPassword) return res.status(400).send('bad request')
   try {
-    const user = await userModel.findById(req.user._id)
+    const user = await userModel.findById(req.user._id);
+    console.log(user.password, prevPassword)
+    if (!await bcrypt.compare(prevPassword, user.password)) return res.status(401).send('wrong password')
 
-    user.password = password;
+    const encryptedNew = await bcrypt.hash(newPassword, 10);
+    user.password = encryptedNew;
+
     user.save();
-
     res.status(200).send('successful')
   } catch (e) {
-    console.error(e);
+    console.log(e);
   }
 })
 

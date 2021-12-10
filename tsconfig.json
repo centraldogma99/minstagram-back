@@ -26,6 +26,8 @@
     "./uploads/assets/*",
     "./uploads/*",
     "./app.ts",
-    "./.env"
+    "./.env",
+    // "./.env.development",
+    // "./.env.production",
   ]
 }
